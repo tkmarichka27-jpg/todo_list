@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Things I need to do</title>
+    <style>
+        /* Базові стилі */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background-color: #ffffff;
+            color: #000000;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-top: 0;
+            margin-bottom: 40px;
+        }
+
+        /* Контейнер для дошки (колонок) */
+        .board {
+            display: flex;
+            gap: 30px;
+            overflow-x: auto;
+            align-items: flex-start;
+            padding-bottom: 20px;
+        }
+
+        /* Стилі колонки */
+        .column {
+            min-width: 280px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .column-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+
+        .column-title {
+            font-weight: bold;
+            font-size: 1.2em;
+            border: none;
+            outline: none;
+            background: transparent;
+            width: 100%;
+        }
+
+        /* Стилі рядка (завдання) */
+        .task {
+            display: flex;
+            align-items: flex-start;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 12px 0;
+            gap: 10px;
+            transition: background-color 0.2s;
+        }
+
+        .task:hover {
+            background-color: #fafafa;
+        }
+
+        /* Чекбокс для викреслювання */
+        .task-checkbox {
+            margin-top: 4px;
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .task-text {
+            flex-grow: 1;
+            outline: none;
+            min-height: 20px;
+            word-break: break-word;
+        }
+
+        /* Стан виконаного завдання (закреслення) */
+        .task.completed .task-text {
+            text-decoration: line-through;
+            color: #a0a0a0;
+        }
+
+        /* Кнопки */
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #ccc;
+            font-size: 1.2em;
+            padding: 0 5px;
+        }
+
+        .btn-icon:hover {
+            color: #ff4d4d;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-add {
+            background-color: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-top: 10px;
+            color: #555;
+            transition: all 0.2s;
+        }
+
+        .btn-add:hover {
+            background-color: #e8e8e8;
+            color: #000;
+        }
+
+        .top-controls {
+            margin-bottom: 20px;
+        }
+
+        .btn-primary {
+            background-color: #000;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        .btn-primary:hover {
+            background-color: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Things I need todo</h1>
+        <div class="top-controls">
+            <button class="btn-primary" id="addColumnBtn">+ Додати колонку</button>
+        </div>
+    </header>
+
+    <div id="board" class="board">
+        </div>
+
+    <script>
+        const board = document.getElementById('board');
+        const addColumnBtn = document.getElementById('addColumnBtn');
+
+        // Головна функція збереження даних
+        function saveData() {
+            const columnsData = [];
+            const columns = document.querySelectorAll('.column');
+            
+            columns.forEach(col => {
+                const title = col.querySelector('.column-title').innerText;
+                const tasksData = [];
+                const tasks = col.querySelectorAll('.task');
+                
+                tasks.forEach(task => {
+                    const text = task.querySelector('.task-text').innerText;
+                    const isCompleted = task.querySelector('.task-checkbox').checked;
+                    tasksData.push({ text: text, completed: isCompleted });
+                });
+                
+                columnsData.push({ title: title, tasks: tasksData });
+            });
+            
+            // Зберігаємо у пам'ять браузера у форматі JSON
+            localStorage.setItem('myTasksBoard', JSON.stringify(columnsData));
+        }
+
+        // Функція для створення нового завдання (рядка)
+        function createTaskElement(text = "Нове завдання", isCompleted = false) {
+            const taskDiv = document.createElement('div');
+            taskDiv.className = 'task';
+            if (isCompleted) taskDiv.classList.add('completed');
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'task-checkbox';
+            checkbox.checked = isCompleted;
+
+            const textSpan = document.createElement('span');
+            textSpan.className = 'task-text';
+            textSpan.contentEditable = true;
+            textSpan.innerText = text;
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn-icon';
+            deleteBtn.innerHTML = '×';
+
+            // Слухачі подій, які одразу ЗБЕРІГАЮТЬ зміни
+            checkbox.addEventListener('change', () => {
+                if (checkbox.checked) {
+                    taskDiv.classList.add('completed');
+                } else {
+                    taskDiv.classList.remove('completed');
+                }
+                saveData(); // Зберігаємо стан чекбокса
+            });
+
+            deleteBtn.addEventListener('click', () => {
+                taskDiv.remove();
+                saveData(); // Зберігаємо видалення
+            });
+
+            textSpan.addEventListener('input', () => {
+                saveData(); // Зберігаємо текст під час набору
+            });
+
+            taskDiv.appendChild(checkbox);
+            taskDiv.appendChild(textSpan);
+            taskDiv.appendChild(deleteBtn);
+
+            return taskDiv;
+        }
+
+        // Функція для створення нової колонки
+        function createColumn(titleText = "Назва колонки", tasks = []) {
+            const columnDiv = document.createElement('div');
+            columnDiv.className = 'column';
+
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'column-header';
+
+            const titleInput = document.createElement('span');
+            titleInput.className = 'column-title';
+            titleInput.contentEditable = true;
+            titleInput.innerText = titleText;
+            
+            // Зберігаємо нову назву колонки під час набору
+            titleInput.addEventListener('input', () => {
+                saveData(); 
+            });
+
+            const controlsDiv = document.createElement('div');
+            controlsDiv.className = 'header-controls';
+
+            const deleteColBtn = document.createElement('button');
+            deleteColBtn.className = 'btn-icon';
+            deleteColBtn.innerHTML = '×';
+            deleteColBtn.addEventListener('click', () => {
+                columnDiv.remove();
+                saveData(); // Зберігаємо видалення колонки
+            });
+
+            controlsDiv.appendChild(deleteColBtn);
+            headerDiv.appendChild(titleInput);
+            headerDiv.appendChild(controlsDiv);
+
+            const tasksContainer = document.createElement('div');
+            
+            const addTaskBtn = document.createElement('button');
+            addTaskBtn.className = 'btn-add';
+            addTaskBtn.innerText = "+ Додати рядок";
+            addTaskBtn.addEventListener('click', () => {
+                tasksContainer.appendChild(createTaskElement(""));
+                saveData(); // Зберігаємо додавання нового рядка
+            });
+
+            columnDiv.appendChild(headerDiv);
+            columnDiv.appendChild(tasksContainer);
+            columnDiv.appendChild(addTaskBtn);
+            board.appendChild(columnDiv);
+
+            // Якщо є завдання (передані з пам'яті), додаємо їх
+            if (tasks.length > 0) {
+                tasks.forEach(task => {
+                    tasksContainer.appendChild(createTaskElement(task.text, task.completed));
+                });
+            } else {
+                // Якщо колонка порожня і щойно створена, даємо 1 пустий рядок
+                tasksContainer.appendChild(createTaskElement(""));
+            }
+        }
+
+        addColumnBtn.addEventListener('click', () => {
+            createColumn("Нова колонка", []);
+            saveData();
+        });
+
+        // Функція завантаження даних при відкритті сайту
+        function loadData() {
+            const savedData = localStorage.getItem('myTasksBoard');
+            
+            if (savedData) {
+                // Якщо дані є, перетворюємо їх назад з JSON і будуємо дошку
+                const columnsData = JSON.parse(savedData);
+                columnsData.forEach(colData => {
+                    createColumn(colData.title, colData.tasks);
+                });
+            } else {
+                // Якщо даних немає (перший вхід), створюємо декілька колонок за замовчуванням
+                createColumn("5 берез.", [{ text: "Зробити каву", completed: false }]);
+                createColumn("6 берез.", []);
+                createColumn("7 берез.", []);
+            }
+        }
+
+        // Запускаємо завантаження даних відразу при старті
+        loadData();
+
+    </script>
+
+</body>
+</html>
