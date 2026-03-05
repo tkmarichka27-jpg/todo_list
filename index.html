@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Things I need to do</title>
     <style>
         /* Базові стилі */
@@ -27,6 +27,24 @@
             overflow-x: auto;
             align-items: flex-start;
             padding-bottom: 20px;
+            /* Плавне прокручування для мобільних */
+            scroll-behavior: smooth;
+        }
+
+        /* Приховуємо стандартний скролбар для естетики */
+        .board::-webkit-scrollbar {
+            height: 8px;
+        }
+        .board::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+            border-radius: 4px;
+        }
+        .board::-webkit-scrollbar-thumb {
+            background: #ccc; 
+            border-radius: 4px;
+        }
+        .board::-webkit-scrollbar-thumb:hover {
+            background: #aaa; 
         }
 
         /* Стилі колонки */
@@ -72,8 +90,9 @@
         .task-checkbox {
             margin-top: 4px;
             cursor: pointer;
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
         }
 
         .task-text {
@@ -81,6 +100,7 @@
             outline: none;
             min-height: 20px;
             word-break: break-word;
+            line-height: 1.4;
         }
 
         /* Стан виконаного завдання (закреслення) */
@@ -95,8 +115,9 @@
             border: none;
             cursor: pointer;
             color: #ccc;
-            font-size: 1.2em;
+            font-size: 1.5em; /* Трохи збільшив для зручності на телефоні */
             padding: 0 5px;
+            line-height: 1;
         }
 
         .btn-icon:hover {
@@ -111,7 +132,7 @@
         .btn-add {
             background-color: #f5f5f5;
             border: 1px solid #e0e0e0;
-            padding: 8px;
+            padding: 12px 8px; /* Більше місця для натискання пальцем */
             border-radius: 6px;
             cursor: pointer;
             font-size: 0.9em;
@@ -133,21 +154,50 @@
             background-color: #000;
             color: #fff;
             border: none;
-            padding: 10px 20px;
-            border-radius: 20px;
+            padding: 12px 24px;
+            border-radius: 24px;
             cursor: pointer;
             font-size: 1em;
+            font-weight: 500;
         }
 
         .btn-primary:hover {
             background-color: #333;
+        }
+
+        /* --- АДАПТАЦІЯ ДЛЯ МОБІЛЬНИХ ПРИСТРОЇВ --- */
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 15px; /* Менші відступи по краях екрана */
+            }
+
+            h1 {
+                font-size: 2em; /* Трохи менший заголовок */
+                margin-bottom: 25px;
+            }
+
+            .board {
+                gap: 15px; /* Менша відстань між колонками */
+                scroll-snap-type: x mandatory; /* Вмикаємо прилипання при скролі */
+                padding-bottom: 10px;
+            }
+
+            .column {
+                min-width: 85vw; /* Колонка займає 85% ширини екрана */
+                scroll-snap-align: start; /* Прилипає до лівого краю */
+            }
+
+            .btn-primary {
+                width: 100%; /* Кнопка на всю ширину для зручності */
+                box-sizing: border-box;
+            }
         }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>Things I need todo</h1>
+        <h1>Things I need to do</h1>
         <div class="top-controls">
             <button class="btn-primary" id="addColumnBtn">+ Додати колонку</button>
         </div>
@@ -179,7 +229,6 @@
                 columnsData.push({ title: title, tasks: tasksData });
             });
             
-            // Зберігаємо у пам'ять браузера у форматі JSON
             localStorage.setItem('myTasksBoard', JSON.stringify(columnsData));
         }
 
@@ -203,23 +252,30 @@
             deleteBtn.className = 'btn-icon';
             deleteBtn.innerHTML = '×';
 
-            // Слухачі подій, які одразу ЗБЕРІГАЮТЬ зміни
             checkbox.addEventListener('change', () => {
                 if (checkbox.checked) {
                     taskDiv.classList.add('completed');
                 } else {
                     taskDiv.classList.remove('completed');
                 }
-                saveData(); // Зберігаємо стан чекбокса
+                saveData(); 
             });
 
             deleteBtn.addEventListener('click', () => {
                 taskDiv.remove();
-                saveData(); // Зберігаємо видалення
+                saveData(); 
             });
 
             textSpan.addEventListener('input', () => {
-                saveData(); // Зберігаємо текст під час набору
+                saveData(); 
+            });
+
+            // Виправляємо баг з Enter на мобільних пристроях (щоб не створювався новий абзац)
+            textSpan.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    textSpan.blur(); // Знімаємо фокус після натискання Enter
+                }
             });
 
             taskDiv.appendChild(checkbox);
@@ -242,9 +298,15 @@
             titleInput.contentEditable = true;
             titleInput.innerText = titleText;
             
-            // Зберігаємо нову назву колонки під час набору
             titleInput.addEventListener('input', () => {
                 saveData(); 
+            });
+            
+            titleInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    titleInput.blur();
+                }
             });
 
             const controlsDiv = document.createElement('div');
@@ -254,8 +316,11 @@
             deleteColBtn.className = 'btn-icon';
             deleteColBtn.innerHTML = '×';
             deleteColBtn.addEventListener('click', () => {
-                columnDiv.remove();
-                saveData(); // Зберігаємо видалення колонки
+                // Додаємо підтвердження видалення, щоб випадково не натиснути на телефоні
+                if(confirm("Точно видалити цю колонку?")) {
+                    columnDiv.remove();
+                    saveData();
+                }
             });
 
             controlsDiv.appendChild(deleteColBtn);
@@ -269,7 +334,7 @@
             addTaskBtn.innerText = "+ Додати рядок";
             addTaskBtn.addEventListener('click', () => {
                 tasksContainer.appendChild(createTaskElement(""));
-                saveData(); // Зберігаємо додавання нового рядка
+                saveData(); 
             });
 
             columnDiv.appendChild(headerDiv);
@@ -277,13 +342,11 @@
             columnDiv.appendChild(addTaskBtn);
             board.appendChild(columnDiv);
 
-            // Якщо є завдання (передані з пам'яті), додаємо їх
             if (tasks.length > 0) {
                 tasks.forEach(task => {
                     tasksContainer.appendChild(createTaskElement(task.text, task.completed));
                 });
             } else {
-                // Якщо колонка порожня і щойно створена, даємо 1 пустий рядок
                 tasksContainer.appendChild(createTaskElement(""));
             }
         }
@@ -293,25 +356,23 @@
             saveData();
         });
 
-        // Функція завантаження даних при відкритті сайту
+        // Функція завантаження даних
         function loadData() {
             const savedData = localStorage.getItem('myTasksBoard');
             
             if (savedData) {
-                // Якщо дані є, перетворюємо їх назад з JSON і будуємо дошку
                 const columnsData = JSON.parse(savedData);
                 columnsData.forEach(colData => {
                     createColumn(colData.title, colData.tasks);
                 });
             } else {
-                // Якщо даних немає (перший вхід), створюємо декілька колонок за замовчуванням
+                // Дефолтні дані для першого запуску
                 createColumn("5 берез.", [{ text: "Зробити каву", completed: false }]);
                 createColumn("6 берез.", []);
                 createColumn("7 берез.", []);
             }
         }
 
-        // Запускаємо завантаження даних відразу при старті
         loadData();
 
     </script>
